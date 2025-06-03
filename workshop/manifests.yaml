@@ -1,0 +1,197 @@
+# manifests.yaml
+# Multi-document manifest with placeholders for `envsubst`.
+# Populate a `values.env` with these variables before running `deploy.sh`:
+# NAMESPACE, MONGO_IMAGE_TAG, MONGO_ROOT_USERNAME, MONGO_ROOT_PASSWORD,
+# MONGO_DATABASE, MONGO_STORAGE, BACKEND_IMAGE, BACKEND_IMAGE_TAG,
+# FRONTEND_IMAGE, FRONTEND_IMAGE_TAG, NODE_ENV, NODE_OPTIONS, API_URL,
+# DD_TRACE_AGENT_URL, DD_TRACE_AGENT_PORT, DD_SERVICE, DD_VERSION, DD_ENV,
+# IMAGE_PULL_SECRET
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${NAMESPACE}
+
+---
+# Headless service for MongoDB discovery
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  namespace: ${NAMESPACE}
+spec:
+  clusterIP: None
+  selector:
+    app: mongo
+  ports:
+    - port: 27017
+      name: mongo
+
+---
+# MongoDB StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo
+  namespace: ${NAMESPACE}
+spec:
+  serviceName: "mongo"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+      - name: mongo
+        image: mongo:${MONGO_IMAGE_TAG}
+        ports:
+        - containerPort: 27017
+        env:
+        - name: MONGO_INITDB_ROOT_USERNAME
+          value: "${MONGO_ROOT_USERNAME}"
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          value: "${MONGO_ROOT_PASSWORD}"
+        volumeMounts:
+        - name: data
+          mountPath: /data/db
+      volumes:
+      - name: data
+        emptyDir: {}
+---
+# Backend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: idurar-backend
+  namespace: ${NAMESPACE}
+  labels:
+    app: idurar-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: idurar-backend
+  template:
+    metadata:
+      labels:
+        app: idurar-backend
+    spec:
+      initContainers:
+      - name: wait-for-mongo
+        image: busybox:1.34
+        command:
+          - sh
+          - -c
+          - |
+            until nc -z mongo.${NAMESPACE}.svc.cluster.local 27017; do
+              echo "waiting for mongo..."
+              sleep 2
+            done
+      - name: seed-database
+        image: ${BACKEND_IMAGE}:${BACKEND_IMAGE_TAG}
+        command: ["npm", "run", "setup"]
+        env:
+          - name: DATABASE
+            value: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo.${NAMESPACE}.svc.cluster.local:27017/${MONGO_DATABASE}?authSource=admin"
+
+      containers:
+      - name: idurar-backend
+        image: ${BACKEND_IMAGE}:${BACKEND_IMAGE_TAG}
+        ports:
+          - containerPort: 8888
+        env:
+          - name: NODE_ENV
+            value: "${NODE_ENV}"
+          - name: DATABASE
+            value: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo.${NAMESPACE}.svc.cluster.local:27017/${MONGO_DATABASE}?authSource=admin"
+          - name: NODE_OPTIONS
+            value: "${NODE_OPTIONS}"
+          - name: DD_TRACE_AGENT_URL
+            value: "${DD_TRACE_AGENT_URL}"
+          - name: DD_TRACE_AGENT_PORT
+            value: "${DD_TRACE_AGENT_PORT}"
+          - name: DD_TRACE_AGENT_HOSTNAME
+            value: "${DD_TRACE_AGENT_HOSTNAME}"
+          - name: DD_SERVICE
+            value: "${DD_SERVICE}"
+          - name: DD_VERSION
+            value: "${DD_VERSION}"
+          - name: DD_ENV
+            value: "${DD_ENV}"
+      imagePullSecrets:
+      - name: ${IMAGE_PULL_SECRET}
+
+---
+# Backend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: idurar-backend
+  namespace: ${NAMESPACE}
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+spec:
+  type: LoadBalancer
+  selector:
+    app: idurar-backend
+  ports:
+    - port: 8888
+      targetPort: 8888
+      protocol: TCP
+
+---
+# Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: idurar-frontend
+  namespace: ${NAMESPACE}
+  labels:
+    app: idurar-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: idurar-frontend
+  template:
+    metadata:
+      labels:
+        app: idurar-frontend
+    spec:
+      containers:
+      - name: idurar-frontend
+        image: ${FRONTEND_IMAGE}:${FRONTEND_IMAGE_TAG}
+        ports:
+          - containerPort: 3000
+        env:
+          - name: NODE_ENV
+            value: "${NODE_ENV}"
+          - name: VITE_BACKEND_SERVER
+            value: "${API_URL}"
+          - name: NODE_OPTIONS
+            value: "${NODE_OPTIONS}"
+      imagePullSecrets:
+      - name: ${IMAGE_PULL_SECRET}
+
+---
+# Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: idurar-frontend
+  namespace: ${NAMESPACE}
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+spec:
+  type: LoadBalancer
+  selector:
+    app: idurar-frontend
+  ports:
+    - port: 80
+      targetPort: 3000
+      protocol: TCP

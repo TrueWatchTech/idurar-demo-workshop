@@ -1,0 +1,396 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: datakit
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: datakit
+rules:
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["clusterroles"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["nodes", "nodes/stats", "nodes/metrics", "namespaces", "pods", "pods/log", "events", "services", "endpoints", "persistentvolumes", "persistentvolumeclaims", "pods/exec"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "daemonsets", "statefulsets", "replicasets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: [ "get", "list", "watch"]
+- apiGroups: ["guance.com"]
+  resources: ["datakits"]
+  verbs: ["get","list"]
+- apiGroups: ["monitoring.coreos.com"]
+  resources: ["podmonitors", "servicemonitors"]
+  verbs: ["get", "list"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list"]
+- nonResourceURLs: ["/metrics"]
+  verbs: ["get"]
+
+---
+
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: datakits.guance.com
+spec:
+  group: guance.com
+  versions:
+    - name: v1beta1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                instances:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      k8sNamespace:
+                        type: string
+                      k8sDeployment:
+                        type: string
+                      datakit/logs:
+                        type: string
+                      inputConf:
+                        type: string
+  scope: Namespaced
+  names:
+    plural: datakits
+    singular: datakit
+    kind: Datakit
+    shortNames:
+    - dk
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: datakit
+  namespace: datakit
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: datakit-service
+  namespace: datakit
+spec:
+  selector:
+    app: daemonset-datakit
+  ports:
+    - protocol: TCP
+      port: 9529
+      name: port
+    - protocol: UDP
+      port: 8125
+      name: statsd
+    - name: profile
+      protocol: TCP
+      port: 4040
+      targetPort: 4040
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: datakit
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: datakit
+subjects:
+- kind: ServiceAccount
+  name: datakit
+  namespace: datakit
+
+---
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app: daemonset-datakit
+  name: datakit
+  namespace: datakit
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: daemonset-datakit
+  template:
+    metadata:
+      labels:
+        app: daemonset-datakit
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+      - env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+
+        - name: ENV_K8S_NODE_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+
+        - name: ENV_K8S_NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+
+        #- name: ENV_K8S_CLUSTER_NODE_NAME
+        #  value: cluster_a_$(ENV_K8S_NODE_NAME)
+
+        - name: ENV_DATAWAY
+          value: https://id1-openway.truewatch.com?token=tkn_1983d5xxxxx # Fill your real Dataway server and(or) workspace token
+        - name: ENV_CLUSTER_NAME_K8S
+          value: k8s-demo
+        - name: ENV_GLOBAL_HOST_TAGS
+          value: host=__datakit_hostname,host_ip=__datakit_ip
+        - name: ENV_GLOBAL_ELECTION_TAGS
+          value: "" # Default not set
+        - name: ENV_DEFAULT_ENABLED_INPUTS
+          value: dk,cpu,disk,diskio,mem,swap,system,hostobject,net,host_processes,container,kubernetesprometheus,ebpf,ddtrace,profile,statsd
+        # 开启 Pod 指标采集
+        - name: ENV_INPUT_CONTAINER_ENABLE_POD_METRIC
+          value: "true"
+        # Datakit 选举命名空间，与 ENV_CLUSTER_NAME_K8S 的值保持一致
+        - name: ENV_NAMESPACE
+          value: k8s-demo
+        - name: ENV_ENABLE_ELECTION
+          value: enable
+        - name: ENV_HTTP_LISTEN
+          value: 0.0.0.0:9529
+        - name: HOST_PROC
+          value: /rootfs/proc
+        - name: HOST_SYS
+          value: /rootfs/sys
+        - name: HOST_ETC
+          value: /rootfs/etc
+        - name: HOST_VAR
+          value: /rootfs/var
+        - name: HOST_RUN
+          value: /rootfs/run
+        - name: HOST_DEV
+          value: /rootfs/dev
+        - name: HOST_ROOT
+          value: /rootfs
+        # - name: ENV_GIT_BRANCH
+        #   value: master
+        # - name: ENV_GIT_INTERVAL
+        #   value: 10s
+        # - name: ENV_GIT_URL
+        #   value: http://username:password@github.com/path/to/repository.git
+        # # ---iploc-start
+        #- name: ENV_IPDB
+        #  value: iploc
+        # # ---iploc-end
+        #- name: ENV_REMOTE_JOB_ENABLE
+        #  value: 'true'
+        #- name: ENV_REMOTE_JOB_ENVS
+        #  value: OSS_BUCKET_HOST=host,OSS_ACCESS_KEY_ID=key_id,OSS_ACCESS_KEY_SECRET=key_secret,OSS_BUCKET_NAME=name
+        #- name: ENV_REMOTE_JOB_INTERVAL
+        #  value: 10s
+        image: pubrepo.guance.com/datakit/datakit:1.69.1
+        imagePullPolicy: IfNotPresent
+        name: datakit
+        ports:
+        - containerPort: 9529
+          hostPort: 9529
+          name: port
+          protocol: TCP
+        - containerPort: 8125
+          hostPort: 8125
+          name: statsd
+          protocol: UDP
+        - name: profile
+          containerPort: 4040
+          hostPort: 4040
+          protocol: TCP
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "128Mi"
+          limits:
+            cpu: "2000m"
+            memory: "4Gi"
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /usr/local/datakit/cache
+          name: cache
+          readOnly: false
+        - mountPath: /rootfs
+          name: rootfs
+          mountPropagation: HostToContainer
+        - mountPath: /var/run
+          name: run
+          mountPropagation: HostToContainer
+        - mountPath: /sys/kernel/debug
+          name: debugfs
+        - mountPath: /var/lib/containerd/container_logs
+          name: container-logs
+        - name: datakit-conf
+          mountPath: /usr/local/datakit/conf.d/profile.conf
+          subPath: profile.conf
+          readOnly: true
+        # # ---iploc-start
+        #- mountPath: /usr/local/datakit/data/ipdb/iploc/
+        #  name: datakit-ipdb
+        # # ---iploc-end
+        #- mountPath: /usr/local/datakit/conf.d/db/mysql.conf
+        #  name: datakit-conf
+        #  subPath: mysql.conf
+        #  readOnly: true
+        #- mountPath: /usr/local/datakit/conf.d/db/redis.conf
+        #  name: datakit-conf
+        #  subPath: redis.conf
+        #  readOnly: true
+        # - mountPath: /usr/local/datakit/conf.d/pythond/pythond.conf
+        #   name: datakit-conf
+        #   subPath: pythond.conf
+        #   readOnly: true
+        # - name: hellopythond
+        #   mountPath: /usr/local/datakit/python.d/hellopythond/
+        #   readOnly: true
+        workingDir: /usr/local/datakit
+      # # ---iploc-start
+      #initContainers:
+      #  - args:
+      #      - tar -xf /opt/iploc.tar.gz -C /usr/local/datakit/data/ipdb/iploc/
+      #    command:
+      #      - bash
+      #      - -c
+      #    image: pubrepo.guance.com/datakit/iploc:1.0
+      #    imagePullPolicy: IfNotPresent
+      #    name: init-volume
+      #    resources: {}
+      #    volumeMounts:
+      #      - mountPath: /usr/local/datakit/data/ipdb/iploc/
+      #        name: datakit-ipdb
+      # # ---iploc-end
+      hostIPC: true
+      hostPID: true
+      restartPolicy: Always
+      serviceAccount: datakit
+      serviceAccountName: datakit
+      tolerations:
+      - operator: Exists
+      volumes:
+      - name: datakit-conf
+        configMap:
+          name: datakit-conf
+      # - name: hellopythond
+      #   configMap:
+      #     name: python-scripts
+      - hostPath:
+          path: /
+        name: rootfs
+      - hostPath:
+          path: /var/run
+        name: run
+      - hostPath:
+          path: /sys/kernel/debug
+        name: debugfs
+      - hostPath:
+          path: /var/lib/datakit_cache
+        name: cache
+      - hostPath:
+          path: /var/lib/containerd/container_logs
+        name: container-logs
+      # # ---iploc-start
+      #- emptyDir: {}
+      #  name: datakit-ipdb
+      # # ---iploc-end
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: datakit-conf
+  namespace: datakit
+data:
+    #mysql.conf: |-
+    #  [inputs.mysql]
+    #  ...
+    #redis.conf: |-
+    #  [inputs.redis]
+    #  ...
+    # pythond.conf: |
+    #   [[inputs.pythond]]
+    #     # Python input name
+    #     name = 'some-python-inputs'  # required
+    #     # System environments to run Python
+    #     #envs = ['LD_LIBRARY_PATH=/path/to/lib:$LD_LIBRARY_PATH',]
+    #     # Python path(recomment abstract Python path)
+    #     cmd = "python3" # required. python3 is recommended.
+    #     # Python scripts relative path
+    #     dirs = ["hellopythond"]
+    profile.conf: |-
+      [[inputs.profile.pyroscope]]
+        # listen url
+        url = "0.0.0.0:4040"
+        addr = "http://${DD_TRACE_AGENT_HOSTNAME}:${DD_TRACE_AGENT_PORT}"
+        service = "idurar"
+        env = "dev"
+        version = "0.0.0"
+---
+
+# apiVersion: v1
+# kind: ConfigMap
+# metadata:
+#   name: python-scripts
+#   namespace: datakit
+# data:
+#     hellopythond.py: |
+#       from datakit_framework import DataKitFramework
+#       import random
+#       class HelloPythond(DataKitFramework):
+#           __name = 'HelloPythond'
+#           interval = 10
+#           def run(self):
+#               rd = random.randint(1, 100)
+#               data = [
+#                 {
+#                     "measurement": "random_number",
+#                     "tags": {
+#                       "tag_name": "tag_value",
+#                     },
+#                     "fields": {
+#                       "number": rd,
+#                     },
+#                 },
+#               ]
+#               in_data = {
+#                   'M':data,
+#                   'input': "pyfromgit"
+#               }
+#               return self.report(in_data)
+
+---
