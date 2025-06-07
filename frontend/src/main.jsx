@@ -7,7 +7,7 @@ import { datafluxRum } from '@cloudcare/browser-rum';
 datafluxRum.init({
     applicationId: 'idurar',
     site: 'https://id1-rum-openway.truewatch.com',
-    clientToken: '6668ea09d4fa40e4832ae50dbf63d6d7',
+    clientToken: '6668ea09d4fa40exxxxxxx',
     env: 'dev',
     version: '1.0.0',
     service: 'browser',

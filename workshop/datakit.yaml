@@ -172,10 +172,8 @@ spec:
           value: "" # Default not set
         - name: ENV_DEFAULT_ENABLED_INPUTS
           value: dk,cpu,disk,diskio,mem,swap,system,hostobject,net,host_processes,container,kubernetesprometheus,ebpf,ddtrace,profile,statsd
-        # 开启 Pod 指标采集
         - name: ENV_INPUT_CONTAINER_ENABLE_POD_METRIC
           value: "true"
-        # Datakit 选举命名空间，与 ENV_CLUSTER_NAME_K8S 的值保持一致
         - name: ENV_NAMESPACE
           value: k8s-demo
         - name: ENV_ENABLE_ELECTION
