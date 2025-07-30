@@ -271,7 +271,7 @@ spec:
           path: /sys/kernel/debug
         name: debugfs
       - hostPath:
-          path: /root/datakit_cache
+          path: /var/lib/datakit_cache
         name: cache
       - hostPath:
           path: /var/lib/containerd/container_logs
