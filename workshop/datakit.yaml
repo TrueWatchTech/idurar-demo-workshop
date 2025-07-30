@@ -66,6 +66,10 @@ spec:
       protocol: TCP
       port: 9533
       targetPort: logfwd-port
+    - name: profile
+      protocol: TCP
+      port: 4040
+      targetPort: 4040
 
 ---
 
@@ -189,6 +193,10 @@ spec:
           hostPort: 9533
           name: logfwd-port
           protocol: TCP
+        - name: profile
+          containerPort: 4040
+          hostPort: 4040
+          protocol: TCP
         resources:
           requests:
             cpu: "200m"
@@ -212,6 +220,10 @@ spec:
           name: debugfs
         - mountPath: /var/lib/containerd/container_logs
           name: container-logs
+        - name: datakit-conf
+          mountPath: /usr/local/datakit/conf.d/profile.conf
+          subPath: profile.conf
+          readOnly: true
         # # ---iploc-start
         #- mountPath: /usr/local/datakit/data/ipdb/iploc/
         #  name: datakit-ipdb
@@ -309,6 +321,14 @@ data:
     #     cmd = "python3" # required. python3 is recommended.
     #     # Python scripts relative path
     #     dirs = ["hellopythond"]
+    profile.conf: |-
+      [[inputs.profile.pyroscope]]
+        # listen url
+        url = "0.0.0.0:4040"
+        addr = "http://${DD_TRACE_AGENT_HOSTNAME}:${DD_TRACE_AGENT_PORT}"
+        service = "idurar"
+        env = "dev"
+        version = "0.0.0"
 ---
 
 # apiVersion: v1
