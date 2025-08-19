@@ -138,7 +138,7 @@ spec:
         - name: ENV_GLOBAL_ELECTION_TAGS # Default not set
           value: ""
         - name: ENV_DEFAULT_ENABLED_INPUTS
-          value: statsd,dk,cpu,disk,diskio,mem,swap,system,hostobject,net,host_processes,container,kubernetesprometheus
+          value: statsd,dk,cpu,disk,diskio,mem,swap,system,hostobject,net,host_processes,container,kubernetesprometheus,ddtrace
         - name: ENV_ENABLE_ELECTION
           value: enable
         - name: ENV_HTTP_LISTEN
