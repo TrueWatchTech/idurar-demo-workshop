@@ -32,6 +32,10 @@ export default function CreateForm({ config, formElements, withUpload = false })
 
     dispatch(crud.create({ entity, jsonData: fieldsValue, withUpload }));
   };
+  const submitText =
+    config.ADD_NEW_ENTITY === 'Add New Tax'
+      ? `${translate('Submit')} (DELAYED)`
+      : translate('Submit');
 
   useEffect(() => {
     if (isSuccess) {
@@ -50,7 +54,7 @@ export default function CreateForm({ config, formElements, withUpload = false })
         {formElements}
         <Form.Item>
           <Button type="primary" htmlType="submit">
-            {translate('Submit')}
+            {submitText}
           </Button>
         </Form.Item>
       </Form>
