@@ -8,7 +8,11 @@ const { calculate } = require('@/helpers');
 const schema = require('./schemaValidate');
 
 const update = async (req, res) => {
-  console.error('update invoice sample error!')
+  console.error(JSON.stringify({
+    message: 'update invoice sample error!',
+    level: 'error',
+    service: 'idurar-backend'
+  }));
   let body = req.body;
 
   const { error, value } = schema.validate(body);
