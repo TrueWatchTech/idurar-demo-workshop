@@ -38,6 +38,7 @@ function LoadInvoiceForm({ subTotal = 0, current = null }) {
   const [taxTotal, setTaxTotal] = useState(0);
   const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
   const [lastNumber, setLastNumber] = useState(() => last_invoice_number + 1);
+  const saveText = current ? `${translate('Save')} (LOGS ERROR)`: translate('Save');
 
   const handelTaxChange = (value) => {
     setTaxRate(value / 100);
@@ -216,7 +217,7 @@ function LoadInvoiceForm({ subTotal = 0, current = null }) {
           <Col className="gutter-row" span={5}>
             <Form.Item>
               <Button type="primary" htmlType="submit" icon={<PlusOutlined />} block>
-                {translate('Save')}
+                {saveText}
               </Button>
             </Form.Item>
           </Col>
