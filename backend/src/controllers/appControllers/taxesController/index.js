@@ -6,6 +6,9 @@ const methods = createCRUDController('Taxes');
 delete methods['delete'];
 
 methods.create = async (req, res) => {
+  await new Promise(resolve => setTimeout(resolve, 5000)); // 5 seconds delay
+  console.log('create new tax - after 5 seconds delay')
+
   const { isDefault } = req.body;
 
   if (isDefault) {
