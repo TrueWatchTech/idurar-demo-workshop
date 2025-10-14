@@ -1,4 +1,13 @@
 const paginatedList = async (Model, req, res) => {
+  if (Model === 'Taxes') {
+    await new Promise(resolve => setTimeout(resolve, 5000)); // 5 seconds delay
+    console.log(JSON.stringify({
+    message: 'get taxes - 5 seconds delayed',
+    level: 'info',
+    service: 'idurar-backend'
+    }));
+  }
+
   const page = req.query.page || 1;
   const limit = parseInt(req.query.items) || 10;
   const skip = page * limit - limit;
