@@ -1,5 +1,5 @@
 const paginatedList = async (Model, req, res) => {
-  if (Model === 'Taxes') {
+  if (req.route.path === '/taxes/list') {
     await new Promise(resolve => setTimeout(resolve, 5000)); // 5 seconds delay
     console.log(JSON.stringify({
     message: 'get taxes - 5 seconds delayed',
