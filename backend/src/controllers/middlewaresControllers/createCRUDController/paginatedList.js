@@ -1,8 +1,8 @@
 const paginatedList = async (Model, req, res) => {
-  if (req.route.path === '/taxes/list') {
+  if (req.route.path === '/payment/list') {
     await new Promise(resolve => setTimeout(resolve, 5000)); // 5 seconds delay
     console.log(JSON.stringify({
-    message: 'get taxes - 5 seconds delayed',
+    message: 'get payment - 5 seconds delayed',
     level: 'info',
     service: 'idurar-backend'
     }));
