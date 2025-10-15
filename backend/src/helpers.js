@@ -7,6 +7,8 @@ const fs = require('fs');
 
 const currency = require('currency.js');
 
+const winston = require('winston');
+
 // moment.js is a handy library for displaying dates. We need this in our templates to display things like "Posted 5 minutes ago"
 exports.moment = require('moment');
 
@@ -58,3 +60,8 @@ exports.calculate = {
     return currency(firstValue).divide(secondValue).value;
   },
 };
+
+
+exports.logger = winston.createLogger({
+  transports: [new winston.transports.Console()],
+});

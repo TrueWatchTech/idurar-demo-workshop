@@ -1,4 +1,5 @@
 const express = require('express');
+const { logger } = require('@/helpers');
 
 const cors = require('cors');
 const compression = require('compression');
@@ -17,6 +18,17 @@ const erpApiRouter = require('./routes/appRoutes/appApi');
 const fileUpload = require('express-fileupload');
 // create our Express app
 const app = express();
+
+app.get('/dian', (req, res) => {
+  logger.info('dian endpoint called!');
+  try {
+    throw new Error('intentional test error for dd tracing');
+  } catch (err) {
+    logger.error('an error occurred: ', err);
+  }
+  res.send('Hello dian!');
+})
+
 
 app.use(
   cors({

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { logger } = require('@/helpers');
 
 const Model = mongoose.model('Invoice');
 
@@ -8,11 +9,12 @@ const { calculate } = require('@/helpers');
 const schema = require('./schemaValidate');
 
 const update = async (req, res) => {
-  console.error(JSON.stringify({
-    message: 'update invoice sample error!',
-    level: 'error',
-    service: 'idurar-backend'
-  }));
+  try {
+    throw new Error('update invoice sample error!');
+  } catch (err) {
+    logger.error('an error occurred in update invoice controller: ', err);
+  }
+
   let body = req.body;
 
   const { error, value } = schema.validate(body);
