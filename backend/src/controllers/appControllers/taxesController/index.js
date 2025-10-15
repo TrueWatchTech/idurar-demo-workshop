@@ -2,16 +2,13 @@ const mongoose = require('mongoose');
 const Model = mongoose.model('Taxes');
 const createCRUDController = require('@/controllers/middlewaresControllers/createCRUDController');
 const methods = createCRUDController('Taxes');
+const { logger } = require('@/helpers');
 
 delete methods['delete'];
 
 methods.create = async (req, res) => {
   await new Promise(resolve => setTimeout(resolve, 5000)); // 5 seconds delay
-  console.log(JSON.stringify({
-    message: 'create new tax - 5 seconds delayed',
-    level: 'info',
-    service: 'idurar-backend'
-  }));
+  logger.info('create new tax - 5 seconds delayed');
 
   const { isDefault } = req.body;
 

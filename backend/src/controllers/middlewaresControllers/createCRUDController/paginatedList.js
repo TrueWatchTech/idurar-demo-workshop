@@ -1,11 +1,9 @@
+const { logger } = require('@/helpers');
+
 const paginatedList = async (Model, req, res) => {
-  if (req.route.path === '/taxes/list') {
+  if (req.route.path === '/payment/list') {
     await new Promise(resolve => setTimeout(resolve, 5000)); // 5 seconds delay
-    console.log(JSON.stringify({
-    message: 'get taxes - 5 seconds delayed',
-    level: 'info',
-    service: 'idurar-backend'
-    }));
+    logger.info('get payments - 5 seconds delayed');
   }
 
   const page = req.query.page || 1;
