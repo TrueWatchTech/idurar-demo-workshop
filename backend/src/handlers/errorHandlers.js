@@ -69,6 +69,7 @@ exports.developmentErrors = (error, req, res, next) => {
   No stacktraces are leaked to admin
 */
 exports.productionErrors = (error, req, res, next) => {
+  next(error);
   return res.status(500).json({
     success: false,
     message: error.message,

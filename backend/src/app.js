@@ -19,14 +19,14 @@ const fileUpload = require('express-fileupload');
 // create our Express app
 const app = express();
 
-app.get('/dian', (req, res) => {
+app.get('/dian', (req, res, next) => {
   logger.info('dian endpoint called!');
   try {
     throw new Error('intentional test error for dd tracing');
   } catch (err) {
     logger.error('an error occurred: ', err);
+    next(err);
   }
-  res.send('Hello dian!');
 })
 
 

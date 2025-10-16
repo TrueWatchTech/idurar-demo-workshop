@@ -8,11 +8,12 @@ const custom = require('@/controllers/pdfController');
 const { calculate } = require('@/helpers');
 const schema = require('./schemaValidate');
 
-const update = async (req, res) => {
+const update = async (req, res, next) => {
   try {
     throw new Error('update invoice sample error!');
   } catch (err) {
     logger.error('an error occurred in update invoice controller: ', err);
+    next(err);
   }
 
   let body = req.body;
