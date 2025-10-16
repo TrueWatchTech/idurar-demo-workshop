@@ -5,10 +5,13 @@
   Instead of using try{} catch(e) {} in each controller, we wrap the function in
   catchErrors(), catch any errors they throw, and pass it along to our express middleware with next()
 */
+const { logger } = require('@/helpers');
 
 exports.catchErrors = (fn) => {
   return function (req, res, next) {
     return fn(req, res, next).catch((error) => {
+      logger.error('an error occurred in catchErrors: ', error);
+
       if (error.name == 'ValidationError') {
         return res.status(400).json({
           success: false,
@@ -69,7 +72,8 @@ exports.developmentErrors = (error, req, res, next) => {
   No stacktraces are leaked to admin
 */
 exports.productionErrors = (error, req, res, next) => {
-  next(error);
+  logger.error('an error occurred in productionErrors: ', error);
+  
   return res.status(500).json({
     success: false,
     message: error.message,
