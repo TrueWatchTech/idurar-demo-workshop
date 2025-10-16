@@ -1,5 +1,4 @@
 const express = require('express');
-const { logger } = require('@/helpers');
 
 const cors = require('cors');
 const compression = require('compression');
