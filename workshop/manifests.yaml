@@ -18,12 +18,12 @@ metadata:
 apiVersion: v1
 kind: Service
 metadata:
-  name: mongo
+  name: mongo-og
   namespace: ${NAMESPACE}
 spec:
   clusterIP: None
   selector:
-    app: mongo
+    app: mongo-og
   ports:
     - port: 27017
       name: mongo
@@ -33,18 +33,18 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: mongo
+  name: mongo-og
   namespace: ${NAMESPACE}
 spec:
-  serviceName: "mongo"
+  serviceName: "mongo-og"
   replicas: 1
   selector:
     matchLabels:
-      app: mongo
+      app: mongo-og
   template:
     metadata:
       labels:
-        app: mongo
+        app: mongo-og
     spec:
       containers:
       - name: mongo
@@ -67,19 +67,19 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: idurar-backend
+  name: idurar-backend-og
   namespace: ${NAMESPACE}
   labels:
-    app: idurar-backend
+    app: idurar-backend-og
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: idurar-backend
+      app: idurar-backend-og
   template:
     metadata:
       labels:
-        app: idurar-backend
+        app: idurar-backend-og
     spec:
       initContainers:
       - name: wait-for-mongo
@@ -88,7 +88,7 @@ spec:
           - sh
           - -c
           - |
-            until nc -z mongo.${NAMESPACE}.svc.cluster.local 27017; do
+            until nc -z mongo-og.${NAMESPACE}.svc.cluster.local 27017; do
               echo "waiting for mongo..."
               sleep 2
             done
@@ -97,7 +97,7 @@ spec:
         command: ["npm", "run", "setup"]
         env:
           - name: DATABASE
-            value: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo.${NAMESPACE}.svc.cluster.local:27017/${MONGO_DATABASE}?authSource=admin"
+            value: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo-og.${NAMESPACE}.svc.cluster.local:27017/${MONGO_DATABASE}?authSource=admin"
 
       containers:
       - name: idurar-backend
@@ -108,7 +108,7 @@ spec:
           - name: NODE_ENV
             value: "${NODE_ENV}"
           - name: DATABASE
-            value: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo.${NAMESPACE}.svc.cluster.local:27017/${MONGO_DATABASE}?authSource=admin"
+            value: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo-og.${NAMESPACE}.svc.cluster.local:27017/${MONGO_DATABASE}?authSource=admin"
           - name: NODE_OPTIONS
             value: "${NODE_OPTIONS}"
           - name: DD_TRACE_AGENT_URL
@@ -131,14 +131,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: idurar-backend
+  name: idurar-backend-og
   namespace: ${NAMESPACE}
   annotations:
     service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
 spec:
   type: LoadBalancer
   selector:
-    app: idurar-backend
+    app: idurar-backend-og
   ports:
     - port: 8888
       targetPort: 8888
@@ -149,19 +149,19 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: idurar-frontend
+  name: idurar-frontend-og
   namespace: ${NAMESPACE}
   labels:
-    app: idurar-frontend
+    app: idurar-frontend-og
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: idurar-frontend
+      app: idurar-frontend-og
   template:
     metadata:
       labels:
-        app: idurar-frontend
+        app: idurar-frontend-og
     spec:
       containers:
       - name: idurar-frontend
@@ -183,14 +183,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: idurar-frontend
+  name: idurar-frontend-og
   namespace: ${NAMESPACE}
   annotations:
     service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
 spec:
   type: LoadBalancer
   selector:
-    app: idurar-frontend
+    app: idurar-frontend-og
   ports:
     - port: 80
       targetPort: 3000

@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: datakit
+  name: datakit-og
 
 ---
 
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: datakit
+  name: datakit-og
 rules:
 - apiGroups: ["rbac.authorization.k8s.io"]
   resources: ["clusterroles"]
@@ -36,16 +36,16 @@ rules:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: datakit
-  namespace: datakit
+  name: datakit-og
+  namespace: datakit-og
 
 ---
 
 apiVersion: v1
 kind: Service
 metadata:
-  name: datakit-service
-  namespace: datakit
+  name: datakit-service-og
+  namespace: datakit-og
 spec:
   selector:
     app: daemonset-datakit
@@ -76,15 +76,15 @@ spec:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: datakit
+  name: datakit-og
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: datakit
+  name: datakit-og
 subjects:
 - kind: ServiceAccount
-  name: datakit
-  namespace: datakit
+  name: datakit-og
+  namespace: datakit-og
 
 ---
 
@@ -93,8 +93,8 @@ kind: DaemonSet
 metadata:
   labels:
     app: daemonset-datakit
-  name: datakit
-  namespace: datakit
+  name: datakit-og
+  namespace: datakit-og
 spec:
   revisionHistoryLimit: 10
   selector:
@@ -220,7 +220,7 @@ spec:
           name: debugfs
         - mountPath: /var/lib/containerd/container_logs
           name: container-logs
-        - name: datakit-conf
+        - name: datakit-conf-og
           mountPath: /usr/local/datakit/conf.d/profile.conf
           subPath: profile.conf
           readOnly: true
@@ -262,14 +262,14 @@ spec:
       hostIPC: true
       hostPID: true
       restartPolicy: Always
-      serviceAccount: datakit
-      serviceAccountName: datakit
+      serviceAccount: datakit-og
+      serviceAccountName: datakit-og
       tolerations:
       - operator: Exists
       volumes:
       - configMap:
-          name: datakit-conf
-        name: datakit-conf
+          name: datakit-conf-og
+        name: datakit-conf-og
       # - name: hellopythond
       #   configMap:
       #     name: python-scripts
@@ -302,8 +302,8 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: datakit-conf
-  namespace: datakit
+  name: datakit-conf-og
+  namespace: datakit-og
 data:
     #mysql.conf: |-
     #  [inputs.mysql]
