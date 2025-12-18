@@ -4,13 +4,19 @@ const listAll = async (Model, req, res) => {
 
   //  Query the database for a list of all results
 
+  // CRITICAL FIX: .populate() without arguments loads ALL referenced fields
+  // This can cause massive memory leaks. Use lean() instead or specify fields.
+  // Also add a limit to prevent loading entire collections into memory
+  const maxResults = parseInt(req.query.limit) || 1000; // Default limit of 1000
+  
   let result;
   if (enabled === undefined) {
     result = await Model.find({
       removed: false,
     })
       .sort({ created: sort })
-      .populate()
+      .limit(maxResults)
+      .lean() // Use lean() to reduce memory footprint
       .exec();
   } else {
     result = await Model.find({
@@ -18,7 +24,8 @@ const listAll = async (Model, req, res) => {
       enabled: enabled,
     })
       .sort({ created: sort })
-      .populate()
+      .limit(maxResults)
+      .lean() // Use lean() to reduce memory footprint
       .exec();
   }
 

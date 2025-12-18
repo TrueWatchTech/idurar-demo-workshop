@@ -12,12 +12,30 @@ const paginatedList = async (req, res) => {
 
   const fieldsArray = req.query.fields ? req.query.fields.split(',') : [];
 
-  let fields;
+  let fields = {};
 
-  fields = fieldsArray.length === 0 ? {} : { $or: [] };
+  // Only create $or structure if we have both fields and a search query
+  if (fieldsArray.length > 0 && req.query.q) {
+    // Cache regex to prevent memory leaks - escape special characters
+    let searchRegex;
+    try {
+      const escapedQuery = req.query.q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      searchRegex = new RegExp(escapedQuery, 'i');
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        result: null,
+        message: 'Invalid search query',
+      });
+    }
 
-  for (const field of fieldsArray) {
-    fields.$or.push({ [field]: { $regex: new RegExp(req.query.q, 'i') } });
+    // Build $or array only if we have a valid regex
+    if (searchRegex) {
+      fields.$or = [];
+      for (const field of fieldsArray) {
+        fields.$or.push({ [field]: { $regex: searchRegex } });
+      }
+    }
   }
 
   //  Query the database for a list of all results
