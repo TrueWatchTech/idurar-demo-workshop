@@ -45,7 +45,16 @@ if (major < 20) {
 require('dotenv').config({ path: '.env' });
 require('dotenv').config({ path: '.env.local' });
 
-mongoose.connect(process.env.DATABASE);
+// Configure mongoose with proper connection options to prevent memory leaks
+mongoose.connect(process.env.DATABASE, {
+  maxPoolSize: 10, // Maintain up to 10 socket connections
+  minPoolSize: 2, // Maintain at least 2 socket connections
+  serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
+  socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+  family: 4, // Use IPv4, skip trying IPv6
+  // bufferMaxEntries: 0, // Disable mongoose buffering
+  bufferCommands: false, // Disable mongoose buffering
+});
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
@@ -67,4 +76,66 @@ const app = require('./app');
 app.set('port', process.env.PORT || 8888);
 const server = app.listen(app.get('port'), () => {
   logger.info(`Express running → On PORT : ${server.address().port}`);
+});
+
+// Graceful shutdown handler to prevent memory leaks
+let isShuttingDown = false;
+
+const gracefulShutdown = async (signal) => {
+  if (isShuttingDown) {
+    return;
+  }
+  isShuttingDown = true;
+  
+  logger.info(`Received ${signal}, starting graceful shutdown...`);
+
+  // Stop accepting new connections
+  server.close(async () => {
+    logger.info('HTTP server closed');
+
+    try {
+      // Stop Pyroscope profiling
+      if (Pyroscope && typeof Pyroscope.stop === 'function') {
+        Pyroscope.stop();
+        logger.info('Pyroscope stopped');
+      }
+
+      // Close mongoose connection
+      await mongoose.connection.close();
+      logger.info('MongoDB connection closed');
+
+      // Shutdown dd-trace
+      if (tracer && typeof tracer.destroy === 'function') {
+        await tracer.destroy();
+        logger.info('DD-Trace destroyed');
+      }
+
+      logger.info('Graceful shutdown completed');
+      process.exit(0);
+    } catch (error) {
+      logger.error(`Error during shutdown: ${error.message}`);
+      process.exit(1);
+    }
+  });
+
+  // Force shutdown after 30 seconds
+  setTimeout(() => {
+    logger.error('Forced shutdown after timeout');
+    process.exit(1);
+  }, 30000);
+};
+
+// Handle shutdown signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle uncaught exceptions and unhandled rejections
+process.on('uncaughtException', (error) => {
+  logger.error(`Uncaught Exception: ${error.message}`, error);
+  gracefulShutdown('uncaughtException');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+  gracefulShutdown('unhandledRejection');
 });

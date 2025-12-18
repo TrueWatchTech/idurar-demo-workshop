@@ -12,10 +12,30 @@ const search = async (Model, req, res) => {
   // }
   const fieldsArray = req.query.fields ? req.query.fields.split(',') : ['name'];
 
-  const fields = { $or: [] };
+  let fields = {};
 
-  for (const field of fieldsArray) {
-    fields.$or.push({ [field]: { $regex: new RegExp(req.query.q, 'i') } });
+  // Only create $or structure if we have a search query
+  if (req.query.q) {
+    // Cache regex to prevent memory leaks - escape special characters
+    let searchRegex;
+    try {
+      const escapedQuery = req.query.q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      searchRegex = new RegExp(escapedQuery, 'i');
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        result: [],
+        message: 'Invalid search query',
+      });
+    }
+
+    // Build $or array only if we have a valid regex
+    if (searchRegex) {
+      fields.$or = [];
+      for (const field of fieldsArray) {
+        fields.$or.push({ [field]: { $regex: searchRegex } });
+      }
+    }
   }
   // console.log(fields)
 

@@ -14,12 +14,32 @@ const paginatedList = async (Model, req, res) => {
 
   const fieldsArray = req.query.fields ? req.query.fields.split(',') : [];
 
-  let fields;
+  let fields = {};
 
-  fields = fieldsArray.length === 0 ? {} : { $or: [] };
+  // Only create $or structure if we have both fields and a search query
+  if (fieldsArray.length > 0 && req.query.q) {
+    // Cache regex to prevent memory leaks - escape special characters
+    let searchRegex;
+    try {
+      // Escape special regex characters to prevent ReDoS attacks and memory issues
+      const escapedQuery = req.query.q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      searchRegex = new RegExp(escapedQuery, 'i');
+    } catch (error) {
+      // If regex creation fails, return error
+      return res.status(400).json({
+        success: false,
+        result: null,
+        message: 'Invalid search query',
+      });
+    }
 
-  for (const field of fieldsArray) {
-    fields.$or.push({ [field]: { $regex: new RegExp(req.query.q, 'i') } });
+    // Build $or array only if we have a valid regex
+    if (searchRegex) {
+      fields.$or = [];
+      for (const field of fieldsArray) {
+        fields.$or.push({ [field]: { $regex: searchRegex } });
+      }
+    }
   }
 
   //  Query the database for a list of all results
@@ -32,7 +52,7 @@ const paginatedList = async (Model, req, res) => {
     .skip(skip)
     .limit(limit)
     .sort({ [sortBy]: sortValue })
-    .populate()
+    .lean() // Use lean() to reduce memory footprint instead of populate()
     .exec();
 
   // Counting the total documents
